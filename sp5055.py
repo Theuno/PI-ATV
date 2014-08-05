@@ -8,6 +8,8 @@ class PLL:
   debugLib = True
 
   defFreq = 2335
+  lock = False
+  lockTime = 0
 
   i2cRead = Adafruit_I2C(0x60, debug=debugLib)
   i2cWrite = Adafruit_I2C(0x61, debug=debugLib)
@@ -20,10 +22,7 @@ class PLL:
       self.initPLL()
 
   def initPLL(self):
-      print "..."
-#      lijst = [0x80]
-#      self.i2cWrite.writeList(0x48, lijst)
-      print "[OK]"
+      print "Anything to do?"
 
   def readStatus(self):
       print "Reading PLL Status"
@@ -32,7 +31,7 @@ class PLL:
       return status
 
   def switchToDefaultFreq(self):
-      # <TODO>
+      # <TODO> Currently set to something like 2335 Mhz for 13cm ATV to PI6EHV
       print "Setting to default frequency: " + str(self.defFreq)
       lijst = [0x80]
       status = self.i2cWrite.writeList(0x48, lijst)
@@ -42,11 +41,12 @@ class PLL:
 
   def waitForLock(self):
       status = self.readStatus()
-      #print "Current status: " + str(status)
       while status != 64:
         time.sleep(2)
         status = self.readStatus()
-        print "Current status: " + str(status)
+      self.lock = True
+      self.lockTime = time.time()
+      print "Locked at: " + str(self.lockTime)
 
 board = PLL()
 board.readStatus()
