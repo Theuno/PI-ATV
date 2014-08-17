@@ -1,54 +1,85 @@
 #!/usr/bin/python
 
 import time
-from Adafruit_I2C import *
+import smbus
+import sys
+from ctypes import *
 
 class PLL:
-  #Enable/Disable debugging of the Adafruit I2C Library
-  debugLib = True
+  #Enable/Disable debugging
+  debugLib = False
 
+  # I2C bus
+  bus = smbus.SMBus(1)
+
+  # Default frequency (2335 is PI6EHV pip3, 2367 is PI6EHV pip4)
   defFreq = 2335
   lock = False
   lockTime = 0
-
-  i2cRead = Adafruit_I2C(0x60, debug=debugLib)
-  i2cWrite = Adafruit_I2C(0x61, debug=debugLib)
+  Xtall = c_ulong(4000)
+  address = 0x60
 
   def __init__(self):
       print " [ SP5055 Controller for Raspberry PI ] "
       print " [ by Paul Theunissen - PA5PT         ] "
-    
-      print " Initialize PLL: "
-      self.initPLL()
 
-  def initPLL(self):
-      print "Anything to do?"
-
-  def readStatus(self):
-      print "Reading PLL Status"
-      status = self.i2cRead.readU8(0x48)
-      print "Status: " + str(status)
-      return status
+  def readLock(self):
+      status = self.bus.read_byte(0x61)
+      print "SP5055 Status: " + str(status)
+      lockBit = status & 0x40
+      if lockBit == 64:
+        return True
+      else:
+        return False
 
   def switchToDefaultFreq(self):
-      # <TODO> Currently set to something like 2335 Mhz for 13cm ATV to PI6EHV
-      print "Setting to default frequency: " + str(self.defFreq)
-      lijst = [0x80]
-      status = self.i2cWrite.writeList(0x48, lijst)
-      # print "Result: " + status
-      time.sleep(1) 
-      #sudo i2cset -y 1 0x61 0x48 0x80
+      switchToFreq(defFreq)
+
+  def switchToFreq(self, freq):
+      f = c_ulong(freq * 4 * 2)
+      if self.debugLib == True:
+          print "---------------------------"
+          print "Target frequency: " + str(freq)
+          print "f: " + str(f.value)
+
+      a = c_ulong((f.value >> 8))
+      a = c_ulong(a.value & 0x7F)
+      a = chr(a.value)
+      b = c_ulong(f.value & 0xFF)
+      b = chr(b.value)
+      # Charge pump different for some boards?
+      #c = chr(0b11111110)
+      c = chr(0xCE)
+      d = chr(0b00000000)
+      
+      if self.debugLib == True:
+          print "[ Sending: ]" 
+          print a.encode("hex")
+          print b.encode("hex")
+          print c.encode("hex")
+          print d.encode("hex")
+
+      # Send
+      values = [ord(b), ord(c), ord(d)]
+      self.bus.write_i2c_block_data(self.address, ord(a), values)
+      time.sleep(1)
 
   def waitForLock(self):
-      status = self.readStatus()
-      while status != 64:
-        time.sleep(2)
-        status = self.readStatus()
-      self.lock = True
-      self.lockTime = time.time()
-      print "Locked at: " + str(self.lockTime)
+      while self.lock != True:
+        if self.readLock() == True:
+          self.lock = True
+          self.lockTime = time.time()
+          print "Locked at: " + str(self.lockTime)
+          time.sleep(2)
+        else:
+          print "Not yet locked"
+          time.sleep(2)
 
 board = PLL()
-board.readStatus()
-board.switchToDefaultFreq()
+#board.switchToDefaultFreq()
+if len(sys.argv) > 1:
+    print sys.argv
+    board.switchToFreq(int(sys.argv[1]))
+else:
+    board.switchToFreq(2367)
 board.waitForLock()
