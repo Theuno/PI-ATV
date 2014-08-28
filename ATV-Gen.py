@@ -109,27 +109,21 @@ class Generator():
 
 
     def Show(self,menu):
-        menu.Display.Print("Set picture")
-        menu.Display.SetCursor(0,1)
-        menu.Display.Print("Value:")
+        menu.Display.Print(" Set picture")
+        menu.Display.SetCursor(1,1)
         menu.Display.Cursor(False,False)
         while not menu.Buttons.ReportPressed()[menu.ButtonEsc]:
-            value = 1
-            menu.Display.SetCursor(menu.Display.Width-len("%4d" % value),1)
-            menu.Display.Print("%4d"% value)
+            menu.Display.SetCursor(1,1)
+            text = self.images[self.i]
+            parts = text.split("/")
+            menu.Display.Print(parts[len(parts) - 1])
 
             if menu.Buttons.ReportPressed()[menu.ButtonLeft]:
                 self.previous_image()
                 self.update_screen()
-                print 'Value: ',value
-                menu.Display.SetCursor(menu.Display.Width-len("%4d" % value),1)
-                menu.Display.Print("%4d"% value)
             if menu.Buttons.ReportPressed()[menu.ButtonRight]:
                 self.next_image()
                 self.update_screen()
-                print 'Value: ',Generator.i
-                menu.Display.SetCursor(menu.Display.Width-len("%4d" % value),1)
-                menu.Display.Print("%4d"% value)
             sleep(.2)
 
 
