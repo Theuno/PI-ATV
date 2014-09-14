@@ -13,11 +13,13 @@ class max7456():
 
     # MAX7456 opcodes
     DMM_reg  = 0x04
-    DMAH = 0x05
-    DMAL = 0x06
-    DMDI = 0x07
+    DMAH     = 0x05
+    DMAL     = 0x06
+    DMDI     = 0x07
     VM0_reg  = 0x00
     VM1_reg  = 0x01
+    HOS_reg  = 0x02
+    
 
     # PAL - VM0_reg commands
     ENABLE_display      = 0x48
@@ -46,15 +48,16 @@ class max7456():
     def __init__(self):
         # Open a SPI port - max7456 connected on SPI0
         self.spi.open(0, 0)
-        self.spi.max_speed_hz = 500000
+        #self.spi.max_speed_hz = 500000
+        #self.spi.max_speed_hz = 1000000
+        print "Speed:", self.spi.max_speed_hz
         self.spi.bits_per_word = 8
         self.spi.cshigh = False
         self.spi.lsbfirst = False
         self.spi.mode = 0
   
         # On init, reset max7456
-        self.spi.xfer2([self.VM0_reg, self.MAX7456_reset])
-        time.sleep(0.2)
+        self.reset()
 
         # Set all rows at the same white level
         for x in range (0, self.MAX_screen_rows):
@@ -81,6 +84,36 @@ class max7456():
             self.spi.xfer2([(char)])
         self.spi.xfer2([self.VM0_reg, self.ENABLE_display_vert])
 
+    def readVM0(self):
+        while True:
+            writeReg = self.VM0_reg + 0x80
+            r = self.spi.xfer([writeReg, 0x00])
+            if r[1] > 0:
+                # Readout OK
+                print r[1]
+                stable = self.testBit(r[1], 1)
+                print "Stable: ", stable
+                break
+            print r[1]
+            time.sleep(0.2)
+            
+
+    def reset(self):
+        self.spi.xfer2([self.VM0_reg, self.MAX7456_reset])
+        time.sleep(0.2)
+        while True:
+            r = self.spi.xfer([self.VM0_reg + 0x80, 0x00])
+            #stable = self.testBit(r, 1) 
+            stable = 0
+            print r[1]
+            time.sleep(0.2)
+            # print "VM0: " + r + " Stable: " + stable
+            break
+
+    def testBit(self, int_type, offset):
+        # TODO, move this function to a seperate class
+        mask = 1 << offset
+        return(int_type & mask)        
 
     def testText(self):
         # Program test text
@@ -114,6 +147,8 @@ try:
     max7456 = max7456()
     #max7456.testText()
     max7456.printStr(2, 3, "Hello PA5PT")
+    max7456.readVM0()
+    #max7456.reset()
     
 except KeyboardInterrupt:
     spi.close() 
