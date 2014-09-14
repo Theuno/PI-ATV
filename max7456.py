@@ -66,7 +66,7 @@ class max7456():
         # Enable max7456
         self.spi.xfer2([self.VM0_reg, self.ENABLE_display]);
 
-    def printStr(self, X, Y, str, enable = True):
+    def printStr(self, Y, X, str, enable = True):
         disp = []
         for char in str:
             if self.chars.has_key(char):
@@ -146,6 +146,9 @@ class max7456():
 try:
     max7456 = max7456()
     #max7456.testText()
+    
+    # Use this line to align HOS and VOS
+    max7456.printStr(0, 0, "012345678901234567890123456789")
     max7456.printStr(2, 3, "Hello PA5PT")
     max7456.readVM0()
     #max7456.reset()
