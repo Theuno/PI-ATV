@@ -19,6 +19,7 @@ class max7456():
     VM0_reg  = 0x00
     VM1_reg  = 0x01
     HOS_reg  = 0x02
+    STATUS   = 0xA0
     
 
     # PAL - VM0_reg commands
@@ -84,30 +85,17 @@ class max7456():
             self.spi.xfer2([(char)])
         self.spi.xfer2([self.VM0_reg, self.ENABLE_display_vert])
 
-    def readVM0(self):
-        while True:
-            writeReg = self.VM0_reg + 0x80
-            r = self.spi.xfer([writeReg, 0x00])
-            if r[1] > 0:
-                # Readout OK
-                print r[1]
-                stable = self.testBit(r[1], 1)
-                print "Stable: ", stable
-                break
-            print r[1]
-            time.sleep(0.2)
-            
-
     def reset(self):
         self.spi.xfer2([self.VM0_reg, self.MAX7456_reset])
-        time.sleep(0.2)
+        time.sleep(0.1)
         while True:
-            r = self.spi.xfer([self.VM0_reg + 0x80, 0x00])
-            #stable = self.testBit(r, 1) 
-            stable = 0
-            print r[1]
+            r = self.spi.xfer([self.STATUS, 0x00])
+            stable = self.testBit(r[1], 1)
+            if stable == 0:
+                print "Reset MAX7456 Ok..."
+                break 
             time.sleep(0.2)
-            # print "VM0: " + r + " Stable: " + stable
+            print "Status: ", r
             break
 
     def testBit(self, int_type, offset):
@@ -149,9 +137,8 @@ try:
     
     # Use this line to align HOS and VOS
     max7456.printStr(0, 0, "012345678901234567890123456789")
+    max7456.printStr(1, 0, "().                          .")
     max7456.printStr(2, 3, "Hello PA5PT")
-    max7456.readVM0()
-    #max7456.reset()
     
 except KeyboardInterrupt:
     spi.close() 
