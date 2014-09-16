@@ -69,7 +69,7 @@ class max7456():
         # Enable max7456
         self.spi.xfer2([self.VM0_reg, self.ENABLE_display]);
 
-    def printStr2(self, Y, X, str, blink = False, enable = True):
+    def printStr2(self, Y, X, str, enable = True):
         disp = []
         for char in str:
             if self.chars.has_key(char):
@@ -78,7 +78,7 @@ class max7456():
                 disp.append(0x00)
         disp.append(0xFF)
 
-        start = Y * 30 + X
+        start = X * 30 + Y
         self.spi.xfer2([self.VM0_reg, self.DISABLE_display])
         self.spi.xfer2([self.DMAL, start])
         self.spi.xfer2([self.DMM_reg, 0x01]) # TODO: Define
@@ -87,18 +87,20 @@ class max7456():
             self.spi.xfer2([(char)])
         self.spi.xfer2([self.VM0_reg, self.ENABLE_display_vert])
 
-    def printStr(self, X, Y, str, blink = False, enable = True):
+    def printStr(self, X, Y, string, enable = True, blink = False, invert = False):
         disp = []
-        for char in str:
+        for char in string:
             if self.chars.has_key(char):
                 disp.append(self.chars[char])
             else:
                 disp.append(0x00)
         # Append break character
         #disp.append(0xFF)
+        print string
         print disp
 
-        self.spi.xfer([self.VM0_reg, self.DISABLE_display])
+        if enable == True:
+            self.spi.xfer([self.VM0_reg, self.DISABLE_display])
         
         # Enable 8 bit mode:
         dmm = self.spi.xfer2([self.DMM_reg + 0x80, 0x00])
@@ -108,15 +110,19 @@ class max7456():
         self.spi.xfer2([self.DMM_reg, dmm]) # TODO: Define...
 
         start = X * 30 + Y
+        # Clear position
+        self.spi.xfer2([self.DMAH, 0x00])
+        self.spi.xfer2([self.DMAL, 0x00])
 
         for char in disp:
             # Write char
             dmah = self.spi.xfer2([self.DMAH + 0x80, 0x00])
-            dmah = self.setBit(dmah[1], 1)
+            dmah = self.clearBit(dmah[1], 1)
             self.spi.xfer2([self.DMAH, dmah])
 
-            dmah = ((start >> 8) & 0x01)
+            dmah_pos = ((start >> 8) & 0x01)
             dmal = (start & 0xff)
+            dmah = dmah | dmah_pos
             print "printStr2 (start, dmah, dmal): ", start, dmah, dmal
             start = start + 1
 
@@ -127,8 +133,29 @@ class max7456():
             self.spi.xfer2([self.DMDI, (char)])
             
             # Set DMAH to 1 to write attributes (blink, invert)
-            # TODO
-        self.spi.xfer2([self.VM0_reg, self.ENABLE_display_vert])
+            attrib = False
+ 
+            if blink == True | invert == True: 
+                dmah = self.spi.xfer2([self.DMAH + 0x80, 0x00])
+                dmah = self.setBit(dmah[1], 1)
+                dmah = self.spi.xfer2([self.DMAH, dmah])
+                
+                # Write DMDI
+                dmdi = self.spi.xfer2([self.DMDI + 0x80, 0x00])
+                dmdi = dmdi[1]
+                dmdi = 0x00
+
+                if blink == True:
+                    dmdi = self.setBit(dmdi, 6)
+                if invert == True:
+                    dmdi = self.setBit(dmdi, 5)
+                # Local background, is at bit 4
+
+                self.spi.xfer2([self.DMDI, dmdi])
+                
+
+        if enable == True:
+            self.spi.xfer2([self.VM0_reg, self.ENABLE_display_vert])
 
     def reset(self):
         self.spi.xfer2([self.VM0_reg, self.MAX7456_reset])
@@ -152,6 +179,11 @@ class max7456():
         # TODO, move this function to a seperate class
         mask = 1 << offset
         return(value + mask)
+
+    def clearBit(self, int_type, offset):
+        # TODO, move this function to a seperate class
+        mask = ~(1 << offset)
+        return(int_type & mask)
 
     # Sample function to quickly test the MAX7456 (After init)
     def testText(self):
@@ -205,6 +237,9 @@ try:
     max7456.printStr(13, 0, "13                          13")
     max7456.printStr(14, 0, "14                          14")
     max7456.printStr(15, 0, "15                          15")
+
+    time.sleep(2)
+    max7456.printStr(7,10, "Hello PA5PT", enable = False, blink = True, invert = True)
     
 except KeyboardInterrupt:
     spi.close() 
