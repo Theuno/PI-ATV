@@ -31,6 +31,9 @@ class max7456():
     MAX7456_reset       = 0x42
     DISABLE_display     = 0x40
 
+    # Read command
+    READ = 0x80
+
     MAX_screen_rows = 13
 
     # White levels
@@ -103,7 +106,7 @@ class max7456():
             self.spi.xfer([self.VM0_reg, self.DISABLE_display])
         
         # Enable 8 bit mode:
-        dmm = self.spi.xfer2([self.DMM_reg + 0x80, 0x00])
+        dmm = self.spi.xfer2([self.DMM_reg + READ, 0x00])
         print "DMM before: ", dmm
         dmm = self.setBit(dmm[1], 6)
         print "DMM After: ", dmm
@@ -116,7 +119,7 @@ class max7456():
 
         for char in disp:
             # Write char
-            dmah = self.spi.xfer2([self.DMAH + 0x80, 0x00])
+            dmah = self.spi.xfer2([self.DMAH + READ, 0x00])
             dmah = self.clearBit(dmah[1], 1)
             self.spi.xfer2([self.DMAH, dmah])
 
@@ -136,12 +139,12 @@ class max7456():
             attrib = False
  
             if blink == True | invert == True: 
-                dmah = self.spi.xfer2([self.DMAH + 0x80, 0x00])
+                dmah = self.spi.xfer2([self.DMAH + READ, 0x00])
                 dmah = self.setBit(dmah[1], 1)
                 dmah = self.spi.xfer2([self.DMAH, dmah])
                 
                 # Write DMDI
-                dmdi = self.spi.xfer2([self.DMDI + 0x80, 0x00])
+                dmdi = self.spi.xfer2([self.DMDI + READ, 0x00])
                 dmdi = dmdi[1]
                 dmdi = 0x00
 
