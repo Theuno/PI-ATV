@@ -12,15 +12,18 @@ class max7456():
     spi = spidev.SpiDev() 
 
     # MAX7456 opcodes
+    VM0_reg  = 0x00
+    VM1_reg  = 0x01
+    HOS_reg  = 0x02
+    VOS_reg  = 0x03
     DMM_reg  = 0x04
     DMAH     = 0x05
     DMAL     = 0x06
     DMDI     = 0x07
-    VM0_reg  = 0x00
-    VM1_reg  = 0x01
+    OSDM     = 0x0C
+    RB0      = 0x10
     HOS_reg  = 0x02
     STATUS   = 0xA0
-    
 
     # PAL - VM0_reg commands
     ENABLE_display      = 0x48
@@ -49,7 +52,6 @@ class max7456():
     def __init__(self):
         # Open a SPI port - max7456 connected on SPI0
         self.spi.open(0, 0)
-        #self.spi.max_speed_hz = 500000
         #self.spi.max_speed_hz = 1000000
         print "Speed:", self.spi.max_speed_hz
         self.spi.bits_per_word = 8
@@ -62,12 +64,12 @@ class max7456():
 
         # Set all rows at the same white level
         for x in range (0, self.MAX_screen_rows):
-          self.spi.xfer2([(x + 0x10), self.WHITE_level_90])
+          self.spi.xfer2([(self.RB0 + x), self.WHITE_level_90])
 
         # Enable max7456
         self.spi.xfer2([self.VM0_reg, self.ENABLE_display]);
 
-    def printStr(self, Y, X, str, enable = True):
+    def printStr2(self, Y, X, str, blink = False, enable = True):
         disp = []
         for char in str:
             if self.chars.has_key(char):
@@ -85,6 +87,49 @@ class max7456():
             self.spi.xfer2([(char)])
         self.spi.xfer2([self.VM0_reg, self.ENABLE_display_vert])
 
+    def printStr(self, X, Y, str, blink = False, enable = True):
+        disp = []
+        for char in str:
+            if self.chars.has_key(char):
+                disp.append(self.chars[char])
+            else:
+                disp.append(0x00)
+        # Append break character
+        #disp.append(0xFF)
+        print disp
+
+        self.spi.xfer([self.VM0_reg, self.DISABLE_display])
+        
+        # Enable 8 bit mode:
+        dmm = self.spi.xfer2([self.DMM_reg + 0x80, 0x00])
+        print "DMM before: ", dmm
+        dmm = self.setBit(dmm[1], 6)
+        print "DMM After: ", dmm
+        self.spi.xfer2([self.DMM_reg, dmm]) # TODO: Define...
+
+        start = X * 30 + Y
+
+        for char in disp:
+            # Write char
+            dmah = self.spi.xfer2([self.DMAH + 0x80, 0x00])
+            dmah = self.setBit(dmah[1], 1)
+            self.spi.xfer2([self.DMAH, dmah])
+
+            dmah = ((start >> 8) & 0x01)
+            dmal = (start & 0xff)
+            print "printStr2 (start, dmah, dmal): ", start, dmah, dmal
+            start = start + 1
+
+            # Select MSB
+            self.spi.xfer2([self.DMAH, dmah])
+            self.spi.xfer2([self.DMAL, dmal])
+        
+            self.spi.xfer2([self.DMDI, (char)])
+            
+            # Set DMAH to 1 to write attributes (blink, invert)
+            # TODO
+        self.spi.xfer2([self.VM0_reg, self.ENABLE_display_vert])
+
     def reset(self):
         self.spi.xfer2([self.VM0_reg, self.MAX7456_reset])
         time.sleep(0.1)
@@ -98,11 +143,17 @@ class max7456():
             print "Status: ", r
             break
 
-    def testBit(self, int_type, offset):
+    def testBit(self, value, offset):
+        # TODO, move this function to a seperate class
+        mask = 1 << value
+        return(value & mask)
+ 
+    def setBit(self, value, offset):
         # TODO, move this function to a seperate class
         mask = 1 << offset
-        return(int_type & mask)        
+        return(value + mask)
 
+    # Sample function to quickly test the MAX7456 (After init)
     def testText(self):
         # Program test text
         x = 25
@@ -136,9 +187,24 @@ try:
     #max7456.testText()
     
     # Use this line to align HOS and VOS
-    max7456.printStr(0, 0, "012345678901234567890123456789")
-    max7456.printStr(1, 0, "().                          .")
-    max7456.printStr(2, 3, "Hello PA5PT")
+    max7456.printStr2(2, 3, "Write text in 16 bit mode.....")
+    time.sleep(1)
+    max7456.printStr(0, 0,  "012345678901234567890123456789")
+    max7456.printStr(1, 0,  "1                            1")
+    max7456.printStr(2, 0,  "2                            2")
+    max7456.printStr(3, 0,  "3                            3")
+    max7456.printStr(4, 0,  "4                            4")
+    max7456.printStr(5, 0,  "5                            5")
+    max7456.printStr(6, 0,  "6                            6")
+    max7456.printStr(7, 0,  "7                            7")
+    max7456.printStr(8, 0,  "8                            8")
+    max7456.printStr(9, 0,  "9                            9")
+    max7456.printStr(10, 0, "10                          10")
+    max7456.printStr(11, 0, "11                          11")
+    max7456.printStr(12, 0, "12                          12")
+    max7456.printStr(13, 0, "13                          13")
+    max7456.printStr(14, 0, "14                          14")
+    max7456.printStr(15, 0, "15                          15")
     
 except KeyboardInterrupt:
     spi.close() 
