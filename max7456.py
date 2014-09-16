@@ -180,6 +180,13 @@ class max7456():
     def setHos(self, value):
         self.spi.xfer2([self.HOS_reg, value])
 
+    def getVos(self):
+        vos = self.spi.xfer2([self.VOS_reg + self.READ, 0x00])
+        return vos[1]
+
+    def setVos(self, value):
+        self.spi.xfer2([self.VOS_reg, value])
+
     def testBit(self, value, offset):
         # TODO, move this function to a seperate class
         mask = 1 << value
