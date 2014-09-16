@@ -106,7 +106,7 @@ class max7456():
             self.spi.xfer([self.VM0_reg, self.DISABLE_display])
         
         # Enable 8 bit mode:
-        dmm = self.spi.xfer2([self.DMM_reg + READ, 0x00])
+        dmm = self.spi.xfer2([self.DMM_reg + self.READ, 0x00])
         print "DMM before: ", dmm
         dmm = self.setBit(dmm[1], 6)
         print "DMM After: ", dmm
@@ -119,7 +119,7 @@ class max7456():
 
         for char in disp:
             # Write char
-            dmah = self.spi.xfer2([self.DMAH + READ, 0x00])
+            dmah = self.spi.xfer2([self.DMAH + self.READ, 0x00])
             dmah = self.clearBit(dmah[1], 1)
             self.spi.xfer2([self.DMAH, dmah])
 
@@ -139,12 +139,12 @@ class max7456():
             attrib = False
  
             if blink == True | invert == True: 
-                dmah = self.spi.xfer2([self.DMAH + READ, 0x00])
+                dmah = self.spi.xfer2([self.DMAH + self.READ, 0x00])
                 dmah = self.setBit(dmah[1], 1)
                 dmah = self.spi.xfer2([self.DMAH, dmah])
                 
                 # Write DMDI
-                dmdi = self.spi.xfer2([self.DMDI + READ, 0x00])
+                dmdi = self.spi.xfer2([self.DMDI + self.READ, 0x00])
                 dmdi = dmdi[1]
                 dmdi = 0x00
 
@@ -172,6 +172,13 @@ class max7456():
             time.sleep(0.2)
             print "Status: ", r
             break
+
+    def getHos(self):
+        hos = self.spi.xfer2([self.HOS_reg + self.READ, 0x00])
+        return hos[1]
+    
+    def setHos(self, value):
+        self.spi.xfer2([self.HOS_reg, value])
 
     def testBit(self, value, offset):
         # TODO, move this function to a seperate class
@@ -222,6 +229,12 @@ try:
     #max7456.testText()
     
     # Use this line to align HOS and VOS
+    max7456.printStr(0, 0,  "012345678901234567890123456789")
+    hos = max7456.getHos()
+    hos = hos - 1
+    max7456.setHos(hos)
+
+
     max7456.printStr2(2, 3, "Write text in 16 bit mode.....")
     time.sleep(1)
     max7456.printStr(0, 0,  "012345678901234567890123456789")
